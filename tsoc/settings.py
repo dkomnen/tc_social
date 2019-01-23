@@ -37,10 +37,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
     'rest_framework',
 
     'tsoc.apps.tsocapi.apps.TsocapiConfig',
-    #'tsocapi'
 ]
 
 MIDDLEWARE = [
@@ -126,3 +126,22 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
 
 STATIC_URL = '/static/'
+
+
+AUTH_USER_MODEL = 'tsocapi.User'
+
+REST_FRAMEWORK = {
+    'EXCEPTION_HANDLER': 'tsoc.apps.tsocapi.exceptions.core_exception_handler',
+    'NON_FIELD_ERRORS_KEY': 'error',
+
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'tsoc.apps.tsocapi.backends.JWTAuthentication',
+    ),
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    'PAGE_SIZE': 20,
+}
+
+HUNTER_API_KEY = ""
+CLEARBIT_API_KEY = ""
+CLEARBIT_ACTIVE = False
+HUNTER_ACTIVE = False

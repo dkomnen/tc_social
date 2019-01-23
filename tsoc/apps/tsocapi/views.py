@@ -1,18 +1,70 @@
 from django.shortcuts import render
-from rest_framework import generics, viewsets, status
+from rest_framework import generics, viewsets, status, views
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 
-from .serializers import PostSerializer, UserSerializer, UserPostLikesSerializer
-from .models import Post, UserPostLikes
-from django.contrib.auth.models import User
+from .serializers import PostSerializer, UserSerializer, UserPostLikesSerializer, RegistrationSerializer, \
+    LoginSerializer
+from .models import Post, UserPostLikes, User
+from .renderers import UserJSONRenderer
 from .services.emailhunter import hunter_client
 from .services.clearbit import clearbit_client
+from django.conf import settings
 
 
 # Create your views here.
 
+class RegistrationAPIView(views.APIView):
+    # Allow any user (authenticated or not) to hit this endpoint.
+    permission_classes = (AllowAny,)
+    renderer_classes = (UserJSONRenderer,)
+    serializer_class = RegistrationSerializer
+
+    def post(self, request):
+        serializer_data = request.data.get('user', {})
+        if settings.CLEARBIT_ACTIVE:
+            enrichment_data = clearbit_client.clearbit_data_enrichment(email=serializer_data.get('email', {}))
+            if enrichment_data is not None:
+                print(enrichment_data)
+                serializer_data["first_name"] = enrichment_data['person']['name']['givenName']
+                serializer_data["last_name"] = enrichment_data['person']['name']['familyName']
+
+        # The create serializer, validate serializer, save serializer pattern
+        # below is common and you will see it a lot throughout this course and
+        # your own work later on. Get familiar with it.
+        serializer = self.serializer_class(data=serializer_data)
+
+        serializer.is_valid(raise_exception=True)
+        if settings.HUNTER_ACTIVE:
+            if not hunter_client.is_email_deliverable(email=serializer_data.get('email', {})):
+                return Response({"message": "Email is not valid"}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer.save()
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class LoginAPIView(views.APIView):
+    permission_classes = (AllowAny,)
+    renderer_classes = (UserJSONRenderer,)
+    serializer_class = LoginSerializer
+
+    def post(self, request):
+        user = request.data.get('user', {})
+
+        # Notice here that we do not call `serializer.save()` like we did for
+        # the registration endpoint. This is because we don't actually have
+        # anything to save. Instead, the `validate` method on our serializer
+        # handles everything we need.
+        serializer = self.serializer_class(data=user)
+        serializer.is_valid(raise_exception=True)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 class UserViewSet(viewsets.GenericViewSet):
+    permission_classes = (IsAuthenticated,)
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
@@ -23,11 +75,11 @@ class UserViewSet(viewsets.GenericViewSet):
             'request': request
         }
         serializer_data = request.data.get('user', {})
-        # enrichment_data = clearbit_client.clearbit_data_enrichment(email=serializer_data.get('email', {}))
-        # if enrichment_data is not None:
-        #     print(enrichment_data)
-        #     serializer_data["first_name"] = enrichment_data['person']['name']['givenName']
-        #     serializer_data["last_name"] = enrichment_data['person']['name']['familyName']
+        enrichment_data = clearbit_client.clearbit_data_enrichment(email=serializer_data.get('email', {}))
+        if enrichment_data is not None:
+            print(enrichment_data)
+            serializer_data["first_name"] = enrichment_data['person']['name']['givenName']
+            serializer_data["last_name"] = enrichment_data['person']['name']['familyName']
 
         serializer = self.serializer_class(
             data=serializer_data,
@@ -35,23 +87,13 @@ class UserViewSet(viewsets.GenericViewSet):
         )
 
         serializer.is_valid(raise_exception=True)
-        # if not hunter_client.is_email_deliverable(email=serializer_data.get('email', {})):
-        #     return Response({"message": "Email is not valid"},status=status.HTTP_400_BAD_REQUEST)
+        if not hunter_client.is_email_deliverable(email=serializer_data.get('email', {})):
+            return Response({"message": "Email is not valid"}, status=status.HTTP_400_BAD_REQUEST)
         serializer.save()
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def list(self, request):
-        # serializer_context = {'request': request}
-        # page = self.paginate_queryset(self.get_queryset())
-        #
-        # serializer = self.serializer_class(
-        #     page,
-        #     context=serializer_context,
-        #     many=True
-        # )
-        #
-        # return self.get_paginated_response(serializer.data)
         queryset = User.objects.all()
         serializer = UserSerializer(queryset, many=True)
         return Response(serializer.data)
@@ -94,16 +136,19 @@ class UserViewSet(viewsets.GenericViewSet):
 
 
 class PostListView(generics.ListAPIView):
+    permission_classes = (IsAuthenticated,)
     queryset = Post.objects.all()
     serializer_class = PostSerializer
 
 
 class PostDetailsView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = (IsAuthenticated,)
     queryset = Post.objects.all()
     serializer_class = PostSerializer
 
 
 class UserPostCreateView(generics.ListCreateAPIView):
+    permission_classes = (IsAuthenticated,)
     queryset = Post.objects.all()
     serializer_class = PostSerializer
 
@@ -130,11 +175,13 @@ class UserPostCreateView(generics.ListCreateAPIView):
 
 
 class UserPostDetailsView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = (IsAuthenticated,)
     queryset = Post.objects.all()
     serializer_class = PostSerializer
 
 
 class UserPostLikesCreateView(generics.ListCreateAPIView):
+    permission_classes = (IsAuthenticated,)
     queryset = UserPostLikes.objects.all()
     serializer_class = UserPostLikesSerializer
     lookup_field = 'user_pk'
@@ -155,7 +202,9 @@ class UserPostLikesCreateView(generics.ListCreateAPIView):
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+
 class UserPostLikesDeleteView(generics.DestroyAPIView):
+    permission_classes = (IsAuthenticated,)
     queryset = UserPostLikes.objects.all()
     serializer_class = UserPostLikesSerializer
     lookup_field = 'user_pk'
@@ -166,8 +215,7 @@ class UserPostLikesDeleteView(generics.DestroyAPIView):
 
 
 class UserLikesDetailsView(generics.ListAPIView):
-    """This class handles the http GET, PUT and DELETE requests."""
-
+    permission_classes = (IsAuthenticated,)
     queryset = UserPostLikes.objects.all()
     serializer_class = PostSerializer
 
