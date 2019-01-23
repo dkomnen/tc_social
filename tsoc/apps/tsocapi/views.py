@@ -97,6 +97,7 @@ class PostListView(generics.ListAPIView):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
 
+
 class PostDetailsView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
@@ -106,7 +107,7 @@ class UserPostCreateView(generics.ListCreateAPIView):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
 
-    def perform_create(self, request, user_pk):
+    def create(self, request, user_pk):
         serializer_context = {
             'request': request
         }
@@ -120,9 +121,15 @@ class UserPostCreateView(generics.ListCreateAPIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def list(self, request, user_pk):
+        queryset = Post.objects.filter(user=user_pk).all()
+        serializer = PostSerializer(queryset, many=True)
+        return Response(serializer.data)
+
 
 class UserPostDetailsView(generics.RetrieveUpdateDestroyAPIView):
-
     queryset = Post.objects.all()
     serializer_class = PostSerializer
 

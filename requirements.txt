@@ -4,3 +4,4 @@ django-filter
 psycopg2
 clearbit
 markdown
+requests
