@@ -37,6 +37,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
+
+    'tsoc.apps.tsocapi.apps.TsocapiConfig',
+    #'tsocapi'
 ]
 
 MIDDLEWARE = [
@@ -76,7 +80,11 @@ WSGI_APPLICATION = 'tsoc.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'NAME': 'tsoc',
+        'USER': 'postgres',
+        'PASSWORD': 'tsocpg',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 

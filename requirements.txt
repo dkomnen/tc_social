@@ -1,2 +1,6 @@
 django
+djangorestframework
+django-filter
 psycopg2
+clearbit
+markdown
