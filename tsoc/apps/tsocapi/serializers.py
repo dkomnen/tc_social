@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Post
+from .models import Post, UserPostLikes
 from django.contrib.auth.models import User
 
 
@@ -30,4 +30,11 @@ class PostSerializer(serializers.ModelSerializer):
     class Meta:
         model = Post
         fields = ('id', 'post_text', 'user', 'created_at', 'modified_at')
+        read_only_fields = ('created_at', 'modified_at')
+
+
+class UserPostLikesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserPostLikes
+        fields = ('user', 'post')
         read_only_fields = ('created_at', 'modified_at')

@@ -3,8 +3,8 @@ from rest_framework import generics, viewsets, status
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 
-from .serializers import PostSerializer, UserSerializer
-from .models import Post
+from .serializers import PostSerializer, UserSerializer, UserPostLikesSerializer
+from .models import Post, UserPostLikes
 from django.contrib.auth.models import User
 from .services.emailhunter import hunter_client
 from .services.clearbit import clearbit_client
@@ -23,11 +23,11 @@ class UserViewSet(viewsets.GenericViewSet):
             'request': request
         }
         serializer_data = request.data.get('user', {})
-        enrichment_data = clearbit_client.clearbit_data_enrichment(email=serializer_data.get('email', {}))
-        if enrichment_data is not None:
-            print(enrichment_data)
-            serializer_data["first_name"] = enrichment_data['person']['name']['givenName']
-            serializer_data["last_name"] = enrichment_data['person']['name']['familyName']
+        # enrichment_data = clearbit_client.clearbit_data_enrichment(email=serializer_data.get('email', {}))
+        # if enrichment_data is not None:
+        #     print(enrichment_data)
+        #     serializer_data["first_name"] = enrichment_data['person']['name']['givenName']
+        #     serializer_data["last_name"] = enrichment_data['person']['name']['familyName']
 
         serializer = self.serializer_class(
             data=serializer_data,
@@ -93,16 +93,69 @@ class UserViewSet(viewsets.GenericViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class CreateView(generics.ListCreateAPIView):
+class PostListView(generics.ListAPIView):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
 
-    def perform_create(self, serializer):
+class PostDetailsView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Post.objects.all()
+    serializer_class = PostSerializer
+
+
+class UserPostCreateView(generics.ListCreateAPIView):
+    queryset = Post.objects.all()
+    serializer_class = PostSerializer
+
+    def perform_create(self, request, user_pk):
+        serializer_context = {
+            'request': request
+        }
+        serializer_data = {'user': user_pk, 'post_text': request.data.get('post_text', {})}
+
+        serializer = self.serializer_class(
+            data=serializer_data,
+            context=serializer_context
+        )
+
+        serializer.is_valid(raise_exception=True)
         serializer.save()
 
 
-class DetailsView(generics.RetrieveUpdateDestroyAPIView):
-    """This class handles the http GET, PUT and DELETE requests."""
+class UserPostDetailsView(generics.RetrieveUpdateDestroyAPIView):
 
     queryset = Post.objects.all()
     serializer_class = PostSerializer
+
+
+class UserPostLikesCreateView(generics.ListCreateAPIView):
+    queryset = UserPostLikes.objects.all()
+    serializer_class = UserPostLikesSerializer
+    lookup_field = 'user_pk'
+
+    def create(self, request, user_pk, post_pk):
+        serializer_context = {
+            'request': request
+        }
+        serializer_data = {'user': user_pk, 'post': post_pk}
+
+        serializer = self.serializer_class(
+            data=serializer_data,
+            context=serializer_context
+        )
+
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class UserLikesDetailsView(generics.ListAPIView):
+    """This class handles the http GET, PUT and DELETE requests."""
+
+    queryset = UserPostLikes.objects.all()
+    serializer_class = PostSerializer
+
+    def list(self, request, user_pk):
+        queryset = UserPostLikes.objects.filter(user=user_pk).all()
+        serializer = UserPostLikesSerializer(queryset, many=True)
+        return Response(serializer.data)
