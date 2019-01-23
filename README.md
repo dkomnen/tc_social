@@ -33,6 +33,18 @@ DATABASES = {
 }
 ```
 
+Create a virtualenv
+
+`virtualenv venv`
+
+Activate venv
+
+`source venv/bin/activate`
+
+Install requirements with pip
+
+`pip install -r requirements.txt`
+
 Run the server
 
 `python manage.py runserver`
