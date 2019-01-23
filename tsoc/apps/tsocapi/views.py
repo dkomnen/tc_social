@@ -155,6 +155,15 @@ class UserPostLikesCreateView(generics.ListCreateAPIView):
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+class UserPostLikesDeleteView(generics.DestroyAPIView):
+    queryset = UserPostLikes.objects.all()
+    serializer_class = UserPostLikesSerializer
+    lookup_field = 'user_pk'
+
+    def destroy(self, request, user_pk, post_pk):
+        queryset = UserPostLikes.objects.get(user=user_pk, post=post_pk).delete()
+        return Response(status=status.HTTP_200_OK)
+
 
 class UserLikesDetailsView(generics.ListAPIView):
     """This class handles the http GET, PUT and DELETE requests."""
@@ -165,4 +174,4 @@ class UserLikesDetailsView(generics.ListAPIView):
     def list(self, request, user_pk):
         queryset = UserPostLikes.objects.filter(user=user_pk).all()
         serializer = UserPostLikesSerializer(queryset, many=True)
-        return Response(serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)

@@ -16,6 +16,8 @@ urlpatterns = {
     url(r'^users/(?P<user_pk>[0-9]+)/posts/(?P<pk>[0-9]+)/$', UserPostDetailsView.as_view(), name="user_post_details"),
     url(r'^users/(?P<user_pk>[0-9]+)/posts/(?P<post_pk>[0-9]+)/like/$', UserPostLikesCreateView.as_view(),
         name="user_post_like_create"),
+    url(r'^users/(?P<user_pk>[0-9]+)/posts/(?P<post_pk>[0-9]+)/unlike/$', UserPostLikesDeleteView.as_view(),
+        name="user_post_like_delete"),
     url(r'^users/(?P<user_pk>[0-9]+)/likes/$', UserLikesDetailsView.as_view(),
         name="user_likes_details"),
 
